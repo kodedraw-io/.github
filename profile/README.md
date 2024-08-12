@@ -23,96 +23,61 @@ You can install KodeDraw using pip
 ### Basic Example
 
 ```python
-from kodedraw.render import KodeDraw
-from kodedraw.models import Diagrams, Diagram, Container, Shape, Connection, Style, LayoutStyle, DefaultLayoutAlgorithm
+from kodedraw import Util, Diagram, Group, Shape, Edge, Style
 
 # Define styles
-diagram_style = Style(
-    pageWidth="827", 
-    pageHeight="1169", 
-    dx="1394", 
-    dy="850"
-)
-cnt_style = Style(
-    swimlane="1", 
-    fillColor="#FFFFE0"
-)
 shp_style = Style(
     rounded="1", 
     whiteSpace="wrap", 
     fillColor="#D3D3D3"
 )
-cnx_style = Style(
-    edgeStyle="orthogonalEdgeStyle", 
-    rounded="0", 
-    orthogonalLoop="1", 
-    jettySize="auto"
-)
-cnt_title_style = Style(
-    fontColor="#FFFFFF",
-    fillColor="#000000",
-    align="center",
-    verticalAlign="top",
-    whiteSpace="wrap",
-)
 
-layout_style = LayoutStyle(spacing_x=30, spacing_y=30, equal_size=True, direction="LR")
-layout_algorithm = DefaultLayoutAlgorithm(layout_style)
+def diagrams_to_code():
+    stencils = ['aws4']
+    themes = ['light']
+    with Util.get_model(stencils, themes) as diagrams_model,\
+         Diagram(name="Page-1"):
+            with Group(text='Shared Services Account') as ss_account:
+                Shape("cloudformation", text='Account<br>Baseline<br>')
+                Shape("vpc", text='Amazon VPC', style=shp_style)
+            with Group(text='Log Archive Account') as log_archive_account:
+                Shape("cloudformation", text='Account<br>Baseline<br>')
+                Shape("flow_log", text='Aggregate<br>CloudTrail<br>and Config Logs<br>')
+            with Group(text='Security Account') as security_account:
+                Shape("cloudformation", text='Account<br>Baseline<br>')
+                Shape("addon", text='Security<br>Cross-Account<br>Roles<br>')
+                Shape("guardduty", text='Amazon<br>GuardDuty<br>')
+                Shape("sns", text='Amazon SNS')
+            with Group(text='AWS Cloud'):
+                account_baseline = Shape("cloudformation", text='Account<br>Baseline<br>')
+                code_pipeline = Shape("codepipeline", text='AWS<br>CodePipeline<br>')
+                s3_bucket = Shape("bucket", text='Amazon S3<br>Bucket<br>')
+                organizations = Shape("organizations", text='AWS<br>Organizations<br>')
+                sso = Shape("cloudwatch", text='AWS Single<br>Sign-on<br>')
+                service_catalog = Shape("service_catalog", text='AWS Service<br>Catalog<br>')
+                parameter_store = Shape("parameter_store", text='AWS<br>Parameter<br>Store<br>')
+                core_ou = Shape("resources", text='Core OU')
+                
+            core_ou >> [ss_account, 
+                        log_archive_account, 
+                        security_account] 
+            organizations>>[sso,core_ou]
+            s3_bucket >> \
+                code_pipeline >> Edge(text="flow", style=Style(strokeColor="blue")) >>\
+                    [organizations,
+                    account_baseline,
+                    service_catalog,
+                    parameter_store] 
 
-# Create a high-level diagram model
-with Diagrams(layout_style=layout_style) as diagram_model:
-    with Diagram(name="First Page", connection_style=cnx_style, diagram_style=diagram_style):
-        with Container(
-            title_text="Front End Platform",
-            title_style=cnt_title_style,
-            style=cnt_style, width=400, height=200
-        ) as fe:
-            s1 = Shape(text="deco", 
-                       style=shp_style, width=100, height=40)
-            s2 = Shape(text="Integração Magazine", 
-                       style=shp_style, width=100, height=30)
-            s3 = Shape(text="Integração Ágil", 
-                       style=shp_style, width=100, height=30)
-            
-        with Container(
-            title_text="Commerce Platform",
-            style=cnt_style, width=400, height=600
-        ) as commerce:
-            s4 = Shape(text="Magento", 
-                       style=shp_style, width=100, height=40)
-            s5 = Shape(text="Pick up store", 
-                       style=shp_style, width=100, height=30)
-            s6 = Shape(text="Kiosk", 
-                       style=shp_style, width=100, height=30)
+    return diagrams_model
 
-        # Apply layout algorithm to the diagram
-        layout_algorithm.apply_on_diagram(diagram_model)
 
-        # Establish connections with chaining and styles
-        s1 >> s4
-        s2 >> Connection(style=Style(strokeColor="blue")) >> s5
-        s3 >> s6
-        fe >> commerce
-
-    with Diagram(name="Second Page", connection_style=cnx_style, diagram_style=diagram_style) as second_page:
-        with Container(
-            title_text="Another Container",
-            style=cnt_style, width=400, height=200
-        ):
-            s7 = Shape(text="Another Shape", 
-                       style=shp_style, width=100, height=40)
-
-        # Apply layout algorithm to the diagram
-        layout_algorithm.apply_on_diagram(diagram_model)
-
-# Create and draw the diagram from the model
-diagram = KodeDraw(model=diagram_model).draw()
-
-# Save the diagram to a file
-diagram.save('example.drawio')
-
-# Dump model to JSON
-print(diagram_model.model_dump_json(indent=2))
+if __name__ == '__main__':
+    diagrams_model=diagrams_to_code()    # Create and draw the diagram from the model
+    Util.to_drawio(model=diagrams_model,
+                        auto_layout=True,
+                        output_drawio_path='./output/generated.drawio',
+                        title_shape=True)
 ```
 
 ## Documentation
@@ -121,15 +86,16 @@ print(diagram_model.model_dump_json(indent=2))
 
 - **Diagrams**: The root model that holds multiple diagrams.
 - **Diagram**: Represents a single diagram page.
-- **Container**: Represents a container that can hold multiple shapes or other containers.
+- **Group**: Represents a group that can hold multiple shapes or other containers. (Groups are containers with visual icons)
 - **Shape**: Represents a single shape in the diagram.
-- **Connection**: Represents a connection between shapes.
-- **Style**: Represents the styling attributes for shapes and containers.
+- **Edge**: Represents a edge between shapes (Shapes are nodes with visual shapes).
+- **Style**: Represents the styling attributes for shapes and containers (BaseStyle with common attributes).
 - **LayoutStyle**: Defines the parameters for layout algorithms.
 
 ### Layout Algorithms
 
 - **DefaultLayoutAlgorithm**: The default layout algorithm to automatically arrange diagram elements.
+(more layouts algorithms to come)
 
 ## License
 
